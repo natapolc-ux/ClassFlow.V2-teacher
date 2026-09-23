@@ -1911,15 +1911,15 @@ function renderStudentParticipationControl(assignment, submission) {
         ${['มาก','ปานกลาง','น้อย'].map(item => `<option value="${item}" ${item===value?'selected':''}>${item}</option>`).join('')}
       </select>
     </label>
-    ${submission?.SubmissionID ? `<button type="button" onclick="saveStudentGroupParticipation('${escapeHtml(submission.SubmissionID)}','${escapeHtml(assignment.AssignmentID)}')">บันทึกการมีส่วนร่วม</button>` : '<small>ข้อมูลนี้จะบันทึกพร้อมการส่งงาน</small>'}
+    ${submission?.SubmissionID ? `<button type="button" onclick="saveStudentGroupParticipation('${escapeHtml(submission.SubmissionID)}','${escapeHtml(assignment.AssignmentID)}',${Number(submission.SourceRow || 0)})">บันทึกการมีส่วนร่วม</button>` : '<small>ข้อมูลนี้จะบันทึกพร้อมการส่งงาน</small>'}
   </div>`;
 }
 
-async function saveStudentGroupParticipation(submissionId, assignmentId) {
+async function saveStudentGroupParticipation(submissionId, assignmentId, sourceRow) {
   const participation = $(`participation_${assignmentId}`)?.value || 'ปานกลาง';
   try {
     showToast('กำลังบันทึกการมีส่วนร่วม...', { persistent: true, loading: true });
-    await apiPost({ action: 'saveStudentGroupParticipation', submissionId, userId: state.user.UserID, participation });
+    await apiPost({ action: 'saveStudentGroupParticipation', submissionId, sourceRow, userId: state.user.UserID, participation });
     showToast('บันทึกการมีส่วนร่วมแล้ว');
   } catch (err) { showToast(err.message); }
 }
