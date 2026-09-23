@@ -1328,7 +1328,7 @@ function batchScoreCustomScore() {
 }
 function scoreImageCellText(cell) {
   const score = String(cell?.score ?? '').trim();
-  if (score) return score;
+  if (score) return 'ตรวจแล้ว';
   const status = String(cell?.checkedStatus || '').trim();
   if (status === 'ตรวจแล้ว') return 'ตรวจแล้ว';
   if (status === 'ยังไม่ส่ง') return 'ยังไม่ส่ง';
