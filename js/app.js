@@ -24,8 +24,8 @@ const state = {
   submissionsInFlight: new Set()
 };
 const ALL_OPTION = '__ALL__';
-const MATRIX_V2_WEB_VERSION = '2026.09.21-central-login-token';
-const MATRIX_V2_WEB_UPDATED_AT = '2026-09-21 17:30:00 +07';
+const MATRIX_V2_WEB_VERSION = '2026.09.25-flexible-submit-and-score-sync';
+const MATRIX_V2_WEB_UPDATED_AT = '2026-09-25 16:30:00 +07';
 
 const PAGE_TITLES = {
   assignments: 'คำสั่งงาน',
@@ -634,7 +634,9 @@ function openAssignmentEditor(assignmentId='') {
       <label>ระดับชั้น<select id="aeLevel" onchange="$('aeClasses').innerHTML=assignmentEditorClasses(this.value, [])">${levelOptions(level)}</select></label>
       <label>ชื่องาน<input id="aeTopic" value="${escapeHtml(a?.Topic || '')}"></label>
       <label>คะแนนเต็ม<input id="aeFullScore" type="number" min="0" step="0.01" value="${escapeHtml(a?.FullScore ?? '')}"></label>
-      <label>ประเภทงาน<select id="aeWorkType"><option ${a?.WorkType !== 'งานกลุ่ม' ? 'selected' : ''}>งานเดี่ยว</option><option ${a?.WorkType === 'งานกลุ่ม' ? 'selected' : ''}>งานกลุ่ม</option></select></label>
+      <label>ประเภทงาน<select id="aeWorkType" onchange="toggleAssignmentGroupFields(true)"><option ${a?.WorkType === 'งานเดี่ยว' || !a?.WorkType ? 'selected' : ''}>งานเดี่ยว</option><option ${a?.WorkType === 'งานกลุ่ม' ? 'selected' : ''}>งานกลุ่ม</option><option ${a?.WorkType === 'เลือกส่ง' ? 'selected' : ''}>เลือกส่ง</option></select></label>
+      <label id="aeGroupModeWrap">รูปแบบการจัดกลุ่ม<select id="aeGroupMode"><option value="ใช้กลุ่มประจำห้อง" ${a?.GroupMode === 'ใช้กลุ่มประจำห้อง' ? 'selected' : ''}>ใช้กลุ่มประจำห้อง</option><option value="กลุ่มเฉพาะงาน" ${a?.GroupMode === 'กลุ่มเฉพาะงาน' ? 'selected' : ''}>กลุ่มเฉพาะงาน</option><option value="ชุดกลุ่มต่อเนื่อง" ${a?.GroupMode === 'ชุดกลุ่มต่อเนื่อง' ? 'selected' : ''}>ชุดกลุ่มต่อเนื่อง</option><option value="นักเรียนเลือกเอง" ${a?.GroupMode === 'นักเรียนเลือกเอง' || (a?.WorkType === 'เลือกส่ง' && !a?.GroupMode) ? 'selected' : ''}>นักเรียนเลือกเอง</option></select></label>
+      <label id="aeMaxGroupWrap">สมาชิกสูงสุดต่อกลุ่ม<input id="aeMaxGroupMembers" type="number" min="2" step="1" value="${escapeHtml(a?.MaxGroupMembers || '')}" placeholder="ไม่จำกัด"></label>
       <label class="full-row">ห้องที่มอบหมาย<div id="aeClasses" class="class-checks">${assignmentEditorClasses(level, csv(a?.AssignedClasses))}</div></label>
       <label class="full-row">รูปแบบงาน<select id="aeMode" onchange="toggleAssignmentModeFields()"><option value="งานแนบไฟล์" ${!isOnlineWorksheet(a) ? 'selected' : ''}>งานปกติ (ข้อความ/แนบไฟล์)</option><option value="ใบงานออนไลน์" ${isOnlineWorksheet(a) ? 'selected' : ''}>ใบงานออนไลน์ (พิมพ์ตอบในเว็บ)</option></select></label>
       <label class="full-row">คำชี้แจง<textarea id="aeDescription">${escapeHtml(a?.Description || '')}</textarea></label>
@@ -646,10 +648,17 @@ function openAssignmentEditor(assignmentId='') {
   document.body.appendChild(modal);
   parseWorksheetSchema(a).questions.forEach(addWorksheetQuestion);
   toggleAssignmentModeFields();
+  toggleAssignmentGroupFields();
 }
 
 function closeAssignmentEditor() { $('assignmentEditorModal')?.remove(); }
 function toggleAssignmentModeFields() { $('aeQuestionSection')?.classList.toggle('hidden', $('aeMode')?.value !== 'ใบงานออนไลน์'); }
+function toggleAssignmentGroupFields(workTypeChanged=false) {
+  const enabled = $('aeWorkType')?.value !== 'งานเดี่ยว';
+  $('aeGroupModeWrap')?.classList.toggle('hidden', !enabled);
+  $('aeMaxGroupWrap')?.classList.toggle('hidden', !enabled);
+  if (enabled && (workTypeChanged || !$('aeGroupMode')?.value)) $('aeGroupMode').value = $('aeWorkType').value === 'เลือกส่ง' ? 'นักเรียนเลือกเอง' : 'ใช้กลุ่มประจำห้อง';
+}
 function addWorksheetQuestion(q={}) {
   const box = document.createElement('div');
   box.className = 'question-builder-row';
@@ -663,7 +672,8 @@ async function saveAssignmentEditor(assignmentId='') {
   const mode = $('aeMode').value;
   const questions = Array.from(document.querySelectorAll('.question-builder-row')).map(row => ({ id: row.dataset.questionId, label: row.querySelector('.qb-label').value.trim(), type: row.querySelector('.qb-type').value, options: row.querySelector('.qb-options').value.split('|').map(x => x.trim()).filter(Boolean), required: row.querySelector('.qb-required').checked }));
   const existingAssignment = assignmentId ? getAssignment(assignmentId) : null;
-  const assignment = { Level: $('aeLevel').value, Topic: $('aeTopic').value.trim(), FullScore: $('aeFullScore').value, WorkType: $('aeWorkType').value, GroupMode: $('aeWorkType').value === 'งานกลุ่ม' ? (existingAssignment?.GroupMode || 'ใช้กลุ่มประจำห้อง') : 'ไม่ใช้กลุ่ม', AssignedClasses: classes.join(','), Description: $('aeDescription').value.trim(), WorksheetURL: $('aeWorksheetURL').value.trim(), WorksheetVisible: true, AssignmentMode: mode, InstructionType: mode === 'ใบงานออนไลน์' ? 'ใบงานออนไลน์' : ($('aeWorksheetURL').value.trim() ? 'ข้อความและไฟล์' : 'ข้อความ'), WorksheetSchema: mode === 'ใบงานออนไลน์' ? JSON.stringify({version:1, questions}) : '' };
+  const workType = $('aeWorkType').value;
+  const assignment = { Level: $('aeLevel').value, Topic: $('aeTopic').value.trim(), FullScore: $('aeFullScore').value, WorkType: workType, GroupMode: workType === 'งานเดี่ยว' ? 'ไม่ใช้กลุ่ม' : $('aeGroupMode').value, MaxGroupMembers: workType === 'งานเดี่ยว' ? '' : $('aeMaxGroupMembers').value, AssignedClasses: classes.join(','), Description: $('aeDescription').value.trim(), WorksheetURL: $('aeWorksheetURL').value.trim(), WorksheetVisible: true, AssignmentMode: mode, InstructionType: mode === 'ใบงานออนไลน์' ? 'ใบงานออนไลน์' : ($('aeWorksheetURL').value.trim() ? 'ข้อความและไฟล์' : 'ข้อความ'), WorksheetSchema: mode === 'ใบงานออนไลน์' ? JSON.stringify({version:1, questions}) : '' };
   if (existingAssignment?.GroupSetID) assignment.GroupSetID = existingAssignment.GroupSetID;
   if (!assignment.Level || !assignment.Topic || !classes.length) return showToast('กรุณาระบุระดับชั้น ชื่องาน และห้องที่มอบหมาย');
   if (mode === 'ใบงานออนไลน์' && (!questions.length || questions.some(q => !q.label))) return showToast('กรุณาเพิ่มคำถามและใส่ข้อความให้ครบ');
@@ -1874,7 +1884,7 @@ async function loadStudentWork(returnedOnly=false) {
 function renderStudentWorkCard(w) {
   const a = w.assignment;
   const s = w.submission;
-  const groupMissing = a.WorkType === 'งานกลุ่ม' && !w.group;
+  const groupMissing = a.WorkType === 'งานกลุ่ม' && a.GroupMode !== 'นักเรียนเลือกเอง' && !w.group;
   const canSubmit = a.Status === 'เปิดใช้งาน' && !groupMissing;
   const previewId = `studentWorkPreview_${a.AssignmentID}`;
   const online = isOnlineWorksheet(a);
@@ -1890,7 +1900,7 @@ function renderStudentWorkCard(w) {
       <div>ประเภท: ${escapeHtml(a.WorkType)} | รูปแบบคำสั่ง: ${escapeHtml(assignmentInstructionType(a))} ${w.group ? `<br>กลุ่ม: ${escapeHtml(w.group.GroupName)}<br>สมาชิก: ${escapeHtml(w.group.MemberNames)}` : ''}</div>
       ${groupMissing ? '<div class="group-warning"><b>ยังไม่ได้จัดกลุ่ม</b><br>กรุณาแจ้งครูก่อนกรอกหรือส่งงาน</div>' : ''}
       <div>สถานะส่ง: <span class="status-pill">${s ? 'ส่งแล้ว' : 'ยังไม่ส่ง'}</span> ${s ? `<span class="status-pill">${escapeHtml(s.CheckedStatus || 'ยังไม่ตรวจ')}</span>${s.ReturnStatus === 'ส่งคืน' ? ' <span class="status-pill">ส่งคืน</span>' : ''}` : ''}</div>
-      ${a.WorkType === 'งานกลุ่ม' && w.group ? renderStudentParticipationControl(a, s) : ''}
+      ${renderStudentSubmitOptions(a, s, w.group)}
       ${s ? '<div class="submitted-summary"><b>งานที่ส่งแล้วจะแสดงอยู่ฝั่งซ้าย</b></div>' : ''}
       ${online ? renderOnlineWorksheetForm(a, s, canSubmit) : `<label>คำตอบ/ข้อความส่งงาน <textarea id="workText_${a.AssignmentID}" ${canSubmit?'':'disabled'}>${escapeHtml(s?.WorkText || '')}</textarea></label><label>แนบไฟล์ <input id="file_${a.AssignmentID}" type="file" multiple ${canSubmit?'':'disabled'}></label>`}
       <div class="detail-actions">
@@ -1901,6 +1911,26 @@ function renderStudentWorkCard(w) {
       ${s?.ReturnStatus === 'ส่งคืน' ? `<div><b>ครูส่งคืน:</b> ${escapeHtml(s.ReturnNote || '')}</div>` : ''}
     </div>
   </article>`;
+}
+
+function normalizedWebSubmitMode(value) { return ['กลุ่ม','งานกลุ่ม','group'].includes(String(value || '').toLowerCase()) ? 'กลุ่ม' : 'เดี่ยว'; }
+function renderStudentSubmitOptions(assignment, submission, group) {
+  const mode = submission ? normalizedWebSubmitMode(submission.SubmitMode) : (assignment.WorkType === 'งานกลุ่ม' ? 'กลุ่ม' : 'เดี่ยว');
+  const canChoose = assignment.WorkType === 'เลือกส่ง' && !submission;
+  const modeSelect = assignment.WorkType === 'เลือกส่ง' ? `<label><b>เลือกวิธีส่งงาน</b><select id="submitMode_${escapeHtml(assignment.AssignmentID)}" ${canChoose ? '' : 'disabled'} onchange="toggleStudentGroupControls('${escapeHtml(assignment.AssignmentID)}')"><option value="เดี่ยว" ${mode==='เดี่ยว'?'selected':''}>ส่งเดี่ยว</option><option value="กลุ่ม" ${mode==='กลุ่ม'?'selected':''}>ส่งเป็นกลุ่ม</option></select></label>` : '';
+  if (assignment.WorkType === 'งานเดี่ยว') return modeSelect;
+  const selected = new Set(csv(group?.MemberIDs || submission?.MemberIDs || state.user.UserID).map(String));
+  selected.add(String(state.user.UserID));
+  const locked = !!group || !!submission;
+  const classmates = state.students.filter(u => u.Role === 'student' && String(u.Level) === String(state.user.Level) && String(u.ClassName) === String(state.user.ClassName)).sort((a,b) => Number(a.No||9999)-Number(b.No||9999));
+  const selfPick = assignment.GroupMode === 'นักเรียนเลือกเอง';
+  const chooser = selfPick ? `<div class="student-group-picker"><label><b>ชื่อกลุ่ม</b><input id="groupName_${escapeHtml(assignment.AssignmentID)}" value="${escapeHtml(group?.GroupName || submission?.GroupName || `กลุ่มของ ${state.user.Name}`)}" ${locked?'disabled':''}></label><div><b>เลือกสมาชิก${assignment.MaxGroupMembers ? ` (สูงสุด ${escapeHtml(assignment.MaxGroupMembers)} คน)` : ''}</b></div><div class="class-checks">${classmates.map(u => { const mine=String(u.UserID)===String(state.user.UserID); return `<label class="inline-check"><input type="checkbox" name="studentGroup_${escapeHtml(assignment.AssignmentID)}" value="${escapeHtml(u.UserID)}" ${selected.has(String(u.UserID))?'checked':''} ${(mine||locked)?'disabled':''}> ${escapeHtml(`${u.No || '-'} ${u.Name}`)}</label>`; }).join('')}</div>${locked ? '<small>สมาชิกถูกล็อกหลังบันทึกกลุ่มแล้ว</small>' : ''}</div>` : (!group ? '<div class="group-warning">หากเลือกส่งเป็นกลุ่ม กรุณาแจ้งครูจัดกลุ่มก่อนส่ง</div>' : '');
+  return `${modeSelect}<div id="studentGroupControls_${escapeHtml(assignment.AssignmentID)}" class="${mode==='กลุ่ม'?'':'hidden'}">${chooser}${renderStudentParticipationControl(assignment, submission)}</div>`;
+}
+
+function toggleStudentGroupControls(assignmentId) {
+  const mode = $(`submitMode_${assignmentId}`)?.value || 'กลุ่ม';
+  $(`studentGroupControls_${assignmentId}`)?.classList.toggle('hidden', mode !== 'กลุ่ม');
 }
 
 function renderStudentParticipationControl(assignment, submission) {
@@ -2026,10 +2056,12 @@ async function submitStudentWork(assignmentId) {
     const workText = online ? '' : ($(`workText_${assignmentId}`)?.value || '');
     const worksheetAnswers = online ? collectWorksheetAnswers(assignmentId) : null;
     if (!online && !String(workText || '').trim() && !files.length) return showToast('กรุณาพิมพ์คำตอบหรือแนบไฟล์ก่อนส่งงาน');
-    const submitMode = assignment.WorkType === 'งานกลุ่ม' ? 'กลุ่ม' : 'เดี่ยว';
+    const submitMode = assignment.WorkType === 'งานกลุ่ม' ? 'กลุ่ม' : (assignment.WorkType === 'เลือกส่ง' ? ($(`submitMode_${assignmentId}`)?.value || 'เดี่ยว') : 'เดี่ยว');
     showToast('กำลังอัปโหลดและบันทึกงาน กรุณาอย่าปิดหน้านี้...', { persistent: true, loading: true });
     const participation = submitMode === 'กลุ่ม' ? ($(`participation_${assignmentId}`)?.value || 'ปานกลาง') : '';
-    const data = await apiPost({ action: 'submitWork', requestId, userId: state.user.UserID, assignmentId, submitMode, participation, workText, worksheetAnswers, files });
+    const memberIds = submitMode === 'กลุ่ม' && assignment.GroupMode === 'นักเรียนเลือกเอง' ? Array.from(document.querySelectorAll(`[name="studentGroup_${CSS.escape(String(assignmentId))}"]:checked`)).map(input => input.value).concat([state.user.UserID]).filter((id,index,all)=>all.map(String).indexOf(String(id))===index).join(',') : '';
+    const groupName = submitMode === 'กลุ่ม' && assignment.GroupMode === 'นักเรียนเลือกเอง' ? ($(`groupName_${assignmentId}`)?.value || '') : '';
+    const data = await apiPost({ action: 'submitWork', requestId, userId: state.user.UserID, assignmentId, submitMode, groupName, memberIds, participation, workText, worksheetAnswers, files });
     if (!data.verified || !data.submission?.SubmissionID) throw new Error('ระบบยังยืนยันงานที่บันทึกไม่ได้ กรุณาอย่ากดส่งซ้ำและแจ้งครู');
     submissionConfirmed = true;
     clearSubmissionRequestId(assignmentId);
