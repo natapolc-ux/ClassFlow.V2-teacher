@@ -144,8 +144,10 @@
 
     .theme-form { display: grid; gap: 14px; }
     .theme-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: end; }
-    .theme-primary-row { display: grid; grid-template-columns: minmax(120px,1fr) minmax(120px,1fr) auto; gap: 12px; align-items: end; }
-    .theme-card-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid rgba(var(--accent-rgb),.38); }
+    .theme-primary-row { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; align-items: end; }
+    .theme-primary-row button { grid-column: 1 / -1; width: 100%; min-width: 0; white-space: normal; }
+    .theme-card-actions { display: grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap: 10px; padding-top: 12px; border-top: 1px solid rgba(var(--accent-rgb),.38); }
+    .theme-card-actions button { width: 100%; max-width: 100%; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
     .theme-reset-row { margin-top: auto; padding-top: 8px; }
     .system-card-wide { grid-column: span 2; }
     .update-meta { display: grid; gap: 10px; }
@@ -235,7 +237,6 @@
       .duplicate-entry-actions { grid-column: 1 / -1; justify-content: flex-end; }
       .assignment-form-grid, .question-builder-row { grid-template-columns: 1fr; }
       .theme-primary-row { grid-template-columns: 1fr 1fr; }
-      .theme-primary-row button { grid-column: 1 / -1; }
       .system-card-wide { grid-column: auto; }
       .question-builder-row .qb-options-wrap { grid-column: auto; }
     }
@@ -244,7 +245,7 @@
 <body>
   <section id="loginScreen" class="login-screen">
     <div class="login-card">
-      <h1>Class Flow V.2 — เว็บนักเรียน</h1>
+      <h1>Class Flow V.2 — เว็บครู</h1>
       <div class="stack">
         <div id="loginMsg" class="muted">กำลังเชื่อมต่อหน้าเข้าสู่ระบบกลาง...</div>
         <button onclick="goToCentralLogin()">ไปหน้าเข้าสู่ระบบกลาง</button>
