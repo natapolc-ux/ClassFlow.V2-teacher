@@ -24,8 +24,8 @@ const state = {
   submissionsInFlight: new Set()
 };
 const ALL_OPTION = '__ALL__';
-const MATRIX_V2_WEB_VERSION = '2026.09.25-flexible-submit-and-score-sync';
-const MATRIX_V2_WEB_UPDATED_AT = '2026-09-25 16:30:00 +07';
+const MATRIX_V2_WEB_VERSION = '2026.09.29-safe-submission-sync';
+const MATRIX_V2_WEB_UPDATED_AT = '2026-09-29 10:45:00 +07';
 
 const PAGE_TITLES = {
   assignments: 'คำสั่งงาน',
@@ -1525,10 +1525,10 @@ function renderSettingsPage() {
           </div>
           <div id="legacyImportResult" class="student-preview-note">ยังไม่ได้ตรวจสอบไฟล์ระบบเก่า</div>
           <hr>
-          <h3>ตรวจสอบและซิงก์ข้อมูลงานกลุ่ม</h3>
+          <h3>ตรวจสอบและซิงก์ข้อมูลงาน</h3>
           <p>จับคู่งานส่งด้วย GroupID หรือชุด MemberIDs แล้วปรับชื่อกลุ่ม ชื่อสมาชิก และผู้ส่งให้ตรงกับระบบปัจจุบัน</p>
           <div class="detail-actions"><button onclick="previewGroupSync()">ตรวจสอบก่อนซิงก์</button><button onclick="applyGroupSync()">ยืนยันการซิงก์</button></div>
-          <div id="groupSyncResult" class="student-preview-note">ยังไม่ได้ตรวจสอบข้อมูลงานกลุ่ม</div>
+          <div id="groupSyncResult" class="student-preview-note">ยังไม่ได้ตรวจสอบประเภทงานและข้อมูลกลุ่ม</div>
         </div>
       </div>
       <div class="system-card">
@@ -1741,11 +1741,12 @@ function renderGroupSyncResult(data) {
   const changes = data.changes || [];
   const issues = data.issues || [];
   box.innerHTML = `<div><b>รายการที่ตรวจทั้งหมด:</b> ${escapeHtml(data.total || 0)}</div>
-    <div><b>งานกลุ่ม:</b> ${escapeHtml(data.groupTotal || 0)} | <b>งานเก่าที่นำเข้า:</b> ${escapeHtml(data.legacyTotal || 0)}</div>
+    <div><b>งานเดี่ยว:</b> ${escapeHtml(data.individualTotal || 0)} | <b>งานกลุ่ม:</b> ${escapeHtml(data.groupTotal || 0)} | <b>รายการจากงานเลือกส่ง:</b> ${escapeHtml(data.flexibleTotal || 0)}</div>
+    <div><b>งานเก่าที่นำเข้า:</b> ${escapeHtml(data.legacyTotal || 0)} | <b>หาผู้ส่งไม่พบ:</b> ${escapeHtml(data.senderUnmatchedTotal || 0)} | <b>ประเภทงานขัดแย้ง:</b> ${escapeHtml(data.typeConflictTotal || 0)}</div>
     <div><b>จับคู่กลุ่มได้:</b> ${escapeHtml(data.matched || 0)}</div>
     <div><b>รายการที่จะปรับ/ปรับแล้ว:</b> ${escapeHtml(data.changed || 0)}</div>
-    <div><b>จับคู่ไม่ได้:</b> ${escapeHtml(data.unmatched || 0)}</div>
-    ${changes.length ? `<div class="sync-list"><b>ตัวอย่างรายการเปลี่ยนแปลง</b>${changes.slice(0,20).map(x => `<div>${escapeHtml(x.submissionId)}: ${escapeHtml(x.oldGroupName || '-')} → ${escapeHtml(x.newGroupName || '-')} (${escapeHtml(x.fields)})</div>`).join('')}</div>` : ''}
+    <div><b>จับคู่ไม่ได้:</b> ${escapeHtml(data.unmatched || 0)} | <b>ข้อมูลขัดแย้ง:</b> ${escapeHtml(data.conflicts || 0)}</div>
+    ${changes.length ? `<div class="sync-list"><b>ตัวอย่างรายการเปลี่ยนแปลง</b>${changes.slice(0,20).map(x => `<div>${escapeHtml(x.submissionId)} [${escapeHtml(x.submitMode || x.workType || '-')}] ${escapeHtml(x.oldGroupName || '-')} → ${escapeHtml(x.newGroupName || '-')} (${escapeHtml(x.method || '-')}; ${escapeHtml(x.fields)})</div>`).join('')}</div>` : ''}
     ${issues.length ? `<div class="issue"><b>รายการที่ต้องตรวจเอง</b>${issues.slice(0,20).map(x => `<div>${escapeHtml(x.submissionId)}: ${escapeHtml(x.detail)}</div>`).join('')}</div>` : ''}`;
 }
 
@@ -1754,18 +1755,18 @@ async function previewGroupSync() {
     $('groupSyncResult').textContent = 'กำลังตรวจสอบโดยยังไม่แก้ข้อมูล...';
     const data = await apiGet({ action: 'groupSyncPreview' });
     renderGroupSyncResult(data);
-    showToast('ตรวจสอบข้อมูลงานกลุ่มแล้ว');
+    showToast('ตรวจสอบประเภทงานและข้อมูลกลุ่มแล้ว');
   } catch (err) { showToast(err.message); }
 }
 
 async function applyGroupSync() {
-  if (!confirm('ยืนยันซิงก์ชื่อกลุ่ม สมาชิก และข้อมูลผู้ส่งตามรายการที่ตรวจสอบหรือไม่')) return;
+  if (!confirm('ยืนยันซิงก์ประเภทงาน ชื่อกลุ่ม สมาชิก และข้อมูลผู้ส่งตามรายการที่ตรวจสอบหรือไม่')) return;
   try {
     $('groupSyncResult').textContent = 'กำลังซิงก์ข้อมูลงานกลุ่ม...';
     const data = await apiPost({ action: 'applyGroupSync', userId: state.user.UserID });
     renderGroupSyncResult(data);
     await refreshBootstrap(false);
-    showToast('ซิงก์ข้อมูลงานกลุ่มแล้ว');
+    showToast('ซิงก์ข้อมูลงานแล้ว');
   } catch (err) { showToast(err.message); }
 }
 
