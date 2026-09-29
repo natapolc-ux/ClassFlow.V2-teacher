@@ -24,7 +24,7 @@ const state = {
   submissionsInFlight: new Set()
 };
 const ALL_OPTION = '__ALL__';
-const MATRIX_V2_WEB_VERSION = '2026.09.29-selectable-sync-resolution';
+const MATRIX_V2_WEB_VERSION = '2026.09.29-fast-batch-sync';
 const MATRIX_V2_WEB_UPDATED_AT = '2026-09-29 11:20:00 +07';
 
 const PAGE_TITLES = {
@@ -1745,6 +1745,8 @@ function renderGroupSyncResult(data) {
     <div><b>งานเก่าที่นำเข้า:</b> ${escapeHtml(data.legacyTotal || 0)} | <b>หาผู้ส่งไม่พบ:</b> ${escapeHtml(data.senderUnmatchedTotal || 0)} | <b>ประเภทงานขัดแย้ง:</b> ${escapeHtml(data.typeConflictTotal || 0)}</div>
     <div><b>จับคู่กลุ่มได้:</b> ${escapeHtml(data.matched || 0)}</div>
     <div><b>รายการที่จะปรับ/ปรับแล้ว:</b> ${escapeHtml(data.changed || 0)}</div>
+    ${data.appliedTotal !== undefined ? `<div><b>บันทึกลง Submissions สำเร็จ:</b> ${escapeHtml(data.appliedTotal || 0)} รายการ | <b>สร้างตารางคะแนนใหม่:</b> ${escapeHtml((data.rebuiltLevels || []).join(', ') || '-')}</div>` : ''}
+    ${(data.rebuildErrors || []).length ? `<div class="issue"><b>บันทึก Submissions แล้ว แต่ตารางคะแนนบางระดับสร้างไม่สำเร็จ</b>${data.rebuildErrors.map(x => `<div>${escapeHtml(x.level || '-')}: ${escapeHtml(x.detail || '')}</div>`).join('')}</div>` : ''}
     <div><b>จับคู่ไม่ได้:</b> ${escapeHtml(data.unmatched || 0)} | <b>ข้อมูลขัดแย้ง:</b> ${escapeHtml(data.conflicts || 0)}</div>
     ${changes.length ? `<div class="sync-list"><b>ตัวอย่างรายการเปลี่ยนแปลง</b>${changes.slice(0,20).map(x => `<div>${escapeHtml(x.submissionId)} [${escapeHtml(x.submitMode || x.workType || '-')}] ${escapeHtml(x.oldGroupName || '-')} → ${escapeHtml(x.newGroupName || '-')} (${escapeHtml(x.method || '-')}; ${escapeHtml(x.fields)})</div>`).join('')}</div>` : ''}
     ${issues.length ? `<div class="issue"><b>รายการที่ต้องตรวจเอง</b>${issues.map(x => `<div class="sync-resolution-row"><div>${escapeHtml(x.submissionId)}: ${escapeHtml(x.detail)}</div>${(x.choices || []).length ? `<label>เลือกวิธีแก้<select class="sync-resolution" data-key="${escapeHtml(x.key || '')}"><option value="SKIP">ข้ามรายการนี้</option>${x.choices.map(choice => `<option value="${escapeHtml(choice.value)}">${escapeHtml(choice.label)}</option>`).join('')}</select></label>` : ''}</div>`).join('')}</div>` : ''}`;
@@ -1771,7 +1773,7 @@ async function applyGroupSync() {
     const data = await apiPost({ action: 'applyGroupSync', userId: state.user.UserID, resolutions });
     renderGroupSyncResult(data);
     await refreshBootstrap(false);
-    showToast('ซิงก์ข้อมูลงานแล้ว');
+    showToast(`ซิงก์ข้อมูลแล้ว ${data.appliedTotal || 0} รายการ`);
   } catch (err) { showToast(err.message); }
 }
 
