@@ -24,7 +24,7 @@ const state = {
   submissionsInFlight: new Set()
 };
 const ALL_OPTION = '__ALL__';
-const MATRIX_V2_WEB_VERSION = '2026.09.29-card-layout-theme';
+const MATRIX_V2_WEB_VERSION = '2026.09.29-card-button-layout';
 const MATRIX_V2_WEB_UPDATED_AT = '2026-09-29 11:20:00 +07';
 
 const PAGE_TITLES = {
@@ -182,8 +182,8 @@ function goToCentralLogin() {
 }
 
 function startSession(user, bootstrap) {
-  if (APP_PORTAL === 'student' && user.Role !== 'student') {
-    localStorage.removeItem(SESSION_KEY); $('loginScreen').classList.remove('hidden'); $('loginMsg').textContent = 'บัญชีนี้ไม่มีสิทธิ์เข้าเว็บนักเรียน'; return;
+  if (APP_PORTAL === 'teacher' && user.Role !== 'teacher' && user.Role !== 'admin') {
+    localStorage.removeItem(SESSION_KEY); $('loginScreen').classList.remove('hidden'); $('loginMsg').textContent = 'บัญชีนี้ไม่มีสิทธิ์เข้าเว็บครู'; return;
   }
   state.user = user;
   state.bootstrap = bootstrap;
