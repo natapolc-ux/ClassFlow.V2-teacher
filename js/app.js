@@ -24,7 +24,7 @@ const state = {
   submissionsInFlight: new Set()
 };
 const ALL_OPTION = '__ALL__';
-const MATRIX_V2_WEB_VERSION = '2026.09.29-fast-batch-sync';
+const MATRIX_V2_WEB_VERSION = '2026.09.29-card-layout-theme';
 const MATRIX_V2_WEB_UPDATED_AT = '2026-09-29 11:20:00 +07';
 
 const PAGE_TITLES = {
@@ -109,15 +109,17 @@ function applyTheme(user) {
   const accent = normalizeHexColor(user?.AccentColor || '#22C55E');
   const bg = normalizeHexColor(user?.BackgroundColor || '#000000', '#000000');
   const navigation = normalizeHexColor(user?.NavigationColor || '#001407', '#001407');
+  const card = normalizeHexColor(user?.CardColor || '#001807', '#001807');
   const [r, g, b] = hexToRgb(accent);
   document.documentElement.style.setProperty('--accent', accent);
   document.documentElement.style.setProperty('--line', accent);
   document.documentElement.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
   document.documentElement.style.setProperty('--bg', bg);
   document.documentElement.style.setProperty('--nav-bg', navigation);
+  document.documentElement.style.setProperty('--card-bg', card);
   document.documentElement.style.setProperty('--toolbar-bg', `rgba(${r}, ${g}, ${b}, .34)`);
   document.documentElement.style.setProperty('--toolbar-border', `rgba(${r}, ${g}, ${b}, .96)`);
-  document.documentElement.style.setProperty('--layout-panel-bg', `rgba(${r}, ${g}, ${b}, .24)`);
+  document.documentElement.style.setProperty('--layout-panel-bg', card);
   document.documentElement.style.setProperty('--score-head-bg', `rgba(${r}, ${g}, ${b}, .52)`);
   document.documentElement.style.setProperty('--score-name-bg', `rgba(${r}, ${g}, ${b}, .28)`);
   document.documentElement.style.setProperty('--score-cell-bg', `rgba(${r}, ${g}, ${b}, .13)`);
@@ -180,8 +182,8 @@ function goToCentralLogin() {
 }
 
 function startSession(user, bootstrap) {
-  if (APP_PORTAL === 'teacher' && user.Role !== 'teacher' && user.Role !== 'admin') {
-    localStorage.removeItem(SESSION_KEY); $('loginScreen').classList.remove('hidden'); $('loginMsg').textContent = 'บัญชีนี้ไม่มีสิทธิ์เข้าเว็บครู'; return;
+  if (APP_PORTAL === 'student' && user.Role !== 'student') {
+    localStorage.removeItem(SESSION_KEY); $('loginScreen').classList.remove('hidden'); $('loginMsg').textContent = 'บัญชีนี้ไม่มีสิทธิ์เข้าเว็บนักเรียน'; return;
   }
   state.user = user;
   state.bootstrap = bootstrap;
@@ -1492,7 +1494,10 @@ function renderThemeSettingsCard(user, studentMode=false) {
         <label>สีพื้นหลัง<input id="themeBg" type="color" value="${escapeHtml(normalizeHexColor(user.BackgroundColor || '#000000', '#000000'))}"></label>
         <button type="button" onclick="previewThemeFromForm()">แสดงตัวอย่างธีม</button>
       </div>
-      <label>สีแถบเมนูและส่วนหัว (บริเวณที่วงสีชมพู)<input id="themeNavigation" type="color" value="${escapeHtml(normalizeHexColor(user.NavigationColor || '#001407', '#001407'))}"></label>
+      <div class="theme-row">
+        <label>สีแถบเมนูและส่วนหัว<input id="themeNavigation" type="color" value="${escapeHtml(normalizeHexColor(user.NavigationColor || '#001407', '#001407'))}"></label>
+        <label>สีพื้นหลังการ์ดข้อมูล<input id="themeCard" type="color" value="${escapeHtml(normalizeHexColor(user.CardColor || '#001807', '#001807'))}"></label>
+      </div>
       <label>ลิงก์รูปพื้นหลัง<input id="themeBgImage" value="${escapeHtml(user.BackgroundImageURL || '')}" placeholder="https://..."></label>
       <div class="theme-swatch-list">${themeSwatch('#22C55E')}${themeSwatch('#38BDF8')}${themeSwatch('#A855F7')}${themeSwatch('#EC4899')}${themeSwatch('#F97316')}${themeSwatch('#FACC15')}${themeSwatch('#EF4444')}</div>
       <small>สีธีมใช้กับปุ่ม กรอบการ์ด และตารางคะแนน ส่วนสีแถบเมนูจะใช้กับแถบซ้ายและส่วนหัวด้านบน</small>
@@ -1791,6 +1796,7 @@ function getThemeFromForm() {
     BackgroundColor: normalizeHexColor($('themeBg')?.value || state.user?.BackgroundColor || '#000000', '#000000'),
     BackgroundImageURL: $('themeBgImage')?.value?.trim() || '',
     NavigationColor: normalizeHexColor($('themeNavigation')?.value || state.user?.NavigationColor || '#001407', '#001407'),
+    CardColor: normalizeHexColor($('themeCard')?.value || state.user?.CardColor || '#001807', '#001807'),
     ThemeColor: normalizeHexColor($('themeAccent')?.value || state.user?.AccentColor || '#22C55E')
   };
 }
@@ -1804,6 +1810,7 @@ function resetThemeForm() {
   if ($('themeBg')) $('themeBg').value = '#000000';
   if ($('themeBgImage')) $('themeBgImage').value = '';
   if ($('themeNavigation')) $('themeNavigation').value = '#001407';
+  if ($('themeCard')) $('themeCard').value = '#001807';
   previewThemeFromForm();
 }
 async function saveThemeSettings() {
