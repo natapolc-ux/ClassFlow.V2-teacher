@@ -24,8 +24,8 @@ const state = {
   submissionsInFlight: new Set()
 };
 const ALL_OPTION = '__ALL__';
-const MATRIX_V2_WEB_VERSION = '2026.09.29-safe-submission-sync';
-const MATRIX_V2_WEB_UPDATED_AT = '2026-09-29 10:45:00 +07';
+const MATRIX_V2_WEB_VERSION = '2026.09.29-selectable-sync-resolution';
+const MATRIX_V2_WEB_UPDATED_AT = '2026-09-29 11:20:00 +07';
 
 const PAGE_TITLES = {
   assignments: 'คำสั่งงาน',
@@ -1747,7 +1747,11 @@ function renderGroupSyncResult(data) {
     <div><b>รายการที่จะปรับ/ปรับแล้ว:</b> ${escapeHtml(data.changed || 0)}</div>
     <div><b>จับคู่ไม่ได้:</b> ${escapeHtml(data.unmatched || 0)} | <b>ข้อมูลขัดแย้ง:</b> ${escapeHtml(data.conflicts || 0)}</div>
     ${changes.length ? `<div class="sync-list"><b>ตัวอย่างรายการเปลี่ยนแปลง</b>${changes.slice(0,20).map(x => `<div>${escapeHtml(x.submissionId)} [${escapeHtml(x.submitMode || x.workType || '-')}] ${escapeHtml(x.oldGroupName || '-')} → ${escapeHtml(x.newGroupName || '-')} (${escapeHtml(x.method || '-')}; ${escapeHtml(x.fields)})</div>`).join('')}</div>` : ''}
-    ${issues.length ? `<div class="issue"><b>รายการที่ต้องตรวจเอง</b>${issues.slice(0,20).map(x => `<div>${escapeHtml(x.submissionId)}: ${escapeHtml(x.detail)}</div>`).join('')}</div>` : ''}`;
+    ${issues.length ? `<div class="issue"><b>รายการที่ต้องตรวจเอง</b>${issues.map(x => `<div class="sync-resolution-row"><div>${escapeHtml(x.submissionId)}: ${escapeHtml(x.detail)}</div>${(x.choices || []).length ? `<label>เลือกวิธีแก้<select class="sync-resolution" data-key="${escapeHtml(x.key || '')}"><option value="SKIP">ข้ามรายการนี้</option>${x.choices.map(choice => `<option value="${escapeHtml(choice.value)}">${escapeHtml(choice.label)}</option>`).join('')}</select></label>` : ''}</div>`).join('')}</div>` : ''}`;
+}
+
+function collectGroupSyncResolutions() {
+  return Array.from(document.querySelectorAll('.sync-resolution')).map(select => ({ key: select.dataset.key, value: select.value })).filter(item => item.key && item.value && item.value !== 'SKIP');
 }
 
 async function previewGroupSync() {
@@ -1760,10 +1764,11 @@ async function previewGroupSync() {
 }
 
 async function applyGroupSync() {
-  if (!confirm('ยืนยันซิงก์ประเภทงาน ชื่อกลุ่ม สมาชิก และข้อมูลผู้ส่งตามรายการที่ตรวจสอบหรือไม่')) return;
+  const resolutions = collectGroupSyncResolutions();
+  if (!confirm(`ยืนยันซิงก์ข้อมูล และแก้รายการตามที่เลือก ${resolutions.length} รายการหรือไม่`)) return;
   try {
     $('groupSyncResult').textContent = 'กำลังซิงก์ข้อมูลงานกลุ่ม...';
-    const data = await apiPost({ action: 'applyGroupSync', userId: state.user.UserID });
+    const data = await apiPost({ action: 'applyGroupSync', userId: state.user.UserID, resolutions });
     renderGroupSyncResult(data);
     await refreshBootstrap(false);
     showToast('ซิงก์ข้อมูลงานแล้ว');
