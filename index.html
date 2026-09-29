@@ -13,6 +13,7 @@
       --text: #e8ffe8;
       --muted: #9ac3a3;
       --panel: rgba(0, 24, 7, .88);
+      --card-bg: #001807;
       --line: #00ff66;
       --toolbar-bg: rgba(var(--accent-rgb), .38);
       --toolbar-border: rgba(var(--accent-rgb), .98);
@@ -135,7 +136,10 @@
     .score-tools button:disabled { opacity: .55; cursor: wait; }
 
     .settings-grid { padding: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
-    .system-card { border: var(--border); background: var(--panel); padding: 18px; }
+    .settings-grid > *, .system-card, .system-card-wide { min-width: 0; }
+    .system-card { border: var(--border); background: var(--card-bg); padding: 18px; overflow: hidden; overflow-wrap: anywhere; }
+    .system-card input, .system-card select, .system-card textarea { width: 100%; max-width: 100%; min-width: 0; }
+    .system-card p, .system-card small, .system-card div { max-width: 100%; overflow-wrap: anywhere; }
     .system-card h3 { margin-top: 0; color: var(--line); }
 
     .theme-form { display: grid; gap: 14px; }
@@ -145,7 +149,8 @@
     .theme-reset-row { margin-top: auto; padding-top: 8px; }
     .system-card-wide { grid-column: span 2; }
     .update-meta { display: grid; gap: 10px; }
-    .update-meta-row { display: grid; grid-template-columns: minmax(150px,.7fr) minmax(0,1.3fr); gap: 12px; padding: 9px 0; border-bottom: 1px solid rgba(var(--accent-rgb),.3); }
+    .update-meta-row { display: grid; grid-template-columns: minmax(120px,.7fr) minmax(0,1.3fr); gap: 12px; padding: 9px 0; border-bottom: 1px solid rgba(var(--accent-rgb),.3); }
+    .update-meta-row > * { min-width: 0; overflow-wrap: anywhere; }
     .update-meta-row:last-child { border-bottom: 0; }
     .theme-swatch-list { display: flex; gap: 10px; flex-wrap: wrap; }
     .theme-swatch { width: 42px; height: 42px; border: 2px solid var(--line); cursor: pointer; box-shadow: 0 0 12px rgba(var(--accent-rgb), .25); }
@@ -239,7 +244,7 @@
 <body>
   <section id="loginScreen" class="login-screen">
     <div class="login-card">
-      <h1>Class Flow V.2 — เว็บครู</h1>
+      <h1>Class Flow V.2 — เว็บนักเรียน</h1>
       <div class="stack">
         <div id="loginMsg" class="muted">กำลังเชื่อมต่อหน้าเข้าสู่ระบบกลาง...</div>
         <button onclick="goToCentralLogin()">ไปหน้าเข้าสู่ระบบกลาง</button>
