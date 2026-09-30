@@ -990,8 +990,10 @@ function renderIndividualGroupScorePanel(s) {
   }).join('');
   return `<details class="individual-score-panel">
     <summary>คะแนนรายบุคคลตามการมีส่วนร่วม</summary>
-    <div class="individual-score-head"><span>สมาชิก</span><span>การมีส่วนร่วม</span><span>ปรับคะแนน</span><span>คะแนนสุดท้าย</span><span>หมายเหตุ</span></div>
-    <div id="individual_${escapeHtml(s.SubmissionID)}">${rows}</div>
+    <div class="individual-score-table">
+      <div class="individual-score-head"><span>สมาชิก</span><span>การมีส่วนร่วม</span><span>ปรับคะแนน</span><span>คะแนนสุดท้าย</span><span>หมายเหตุ</span></div>
+      <div id="individual_${escapeHtml(s.SubmissionID)}">${rows}</div>
+    </div>
     <button onclick="saveIndividualGroupScores('${escapeHtml(s.SubmissionID)}')">บันทึกคะแนนรายบุคคล</button>
   </details>`;
 }
