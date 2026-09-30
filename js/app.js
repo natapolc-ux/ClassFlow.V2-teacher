@@ -24,8 +24,8 @@ const state = {
   submissionsInFlight: new Set()
 };
 const ALL_OPTION = '__ALL__';
-const MATRIX_V2_WEB_VERSION = '2026.09.30-file-restore-history';
-const MATRIX_V2_WEB_UPDATED_AT = '2026-09-29 11:20:00 +07';
+const MATRIX_V2_WEB_VERSION = '2026.10.01-file-history-fast-load';
+const MATRIX_V2_WEB_UPDATED_AT = '2026-10-01 02:30:00 +07';
 
 const PAGE_TITLES = {
   assignments: 'คำสั่งงาน',
@@ -1792,8 +1792,12 @@ async function loadRemovedFileHistory() {
     const data = await apiGet({ action: 'removedSubmissionFiles' });
     renderRemovedFileHistory(data.removedFiles || []);
   } catch (err) {
-    if (box) box.textContent = err.message;
-    showToast(err.message);
+    const message = err.message || 'โหลดประวัติไม่สำเร็จ';
+    const deploymentHint = /ไม่พบ action|Apps Script deployment/i.test(message)
+      ? ' กรุณา Deploy Apps Script เวอร์ชันล่าสุด แล้วเปิดหน้าเว็บใหม่'
+      : '';
+    if (box) box.textContent = message + deploymentHint;
+    showToast(message + deploymentHint);
   }
 }
 
