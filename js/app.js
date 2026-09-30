@@ -24,7 +24,7 @@ const state = {
   submissionsInFlight: new Set()
 };
 const ALL_OPTION = '__ALL__';
-const MATRIX_V2_WEB_VERSION = '2026.09.29-card-button-layout';
+const MATRIX_V2_WEB_VERSION = '2026.09.29-identifiable-sync-issues';
 const MATRIX_V2_WEB_UPDATED_AT = '2026-09-29 11:20:00 +07';
 
 const PAGE_TITLES = {
@@ -1754,7 +1754,7 @@ function renderGroupSyncResult(data) {
     ${(data.rebuildErrors || []).length ? `<div class="issue"><b>บันทึก Submissions แล้ว แต่ตารางคะแนนบางระดับสร้างไม่สำเร็จ</b>${data.rebuildErrors.map(x => `<div>${escapeHtml(x.level || '-')}: ${escapeHtml(x.detail || '')}</div>`).join('')}</div>` : ''}
     <div><b>จับคู่ไม่ได้:</b> ${escapeHtml(data.unmatched || 0)} | <b>ข้อมูลขัดแย้ง:</b> ${escapeHtml(data.conflicts || 0)}</div>
     ${changes.length ? `<div class="sync-list"><b>ตัวอย่างรายการเปลี่ยนแปลง</b>${changes.slice(0,20).map(x => `<div>${escapeHtml(x.submissionId)} [${escapeHtml(x.submitMode || x.workType || '-')}] ${escapeHtml(x.oldGroupName || '-')} → ${escapeHtml(x.newGroupName || '-')} (${escapeHtml(x.method || '-')}; ${escapeHtml(x.fields)})</div>`).join('')}</div>` : ''}
-    ${issues.length ? `<div class="issue"><b>รายการที่ต้องตรวจเอง</b>${issues.map(x => `<div class="sync-resolution-row"><div>${escapeHtml(x.submissionId)}: ${escapeHtml(x.detail)}</div>${(x.choices || []).length ? `<label>เลือกวิธีแก้<select class="sync-resolution" data-key="${escapeHtml(x.key || '')}"><option value="SKIP">ข้ามรายการนี้</option>${x.choices.map(choice => `<option value="${escapeHtml(choice.value)}">${escapeHtml(choice.label)}</option>`).join('')}</select></label>` : ''}</div>`).join('')}</div>` : ''}`;
+    ${issues.length ? `<div class="issue"><b>รายการที่ต้องตรวจเอง</b>${issues.map(x => `<div class="sync-resolution-row"><div><b>งาน:</b> ${escapeHtml(x.assignmentTopic || '(ไม่พบชื่อหัวข้อ)')} | <b>AssignmentID:</b> ${escapeHtml(x.assignmentId || '-')} | <b>แถว Submissions:</b> ${escapeHtml(x.sourceRow || '-')}</div><div><b>ผู้ส่ง:</b> ${escapeHtml(x.studentName || '-')} (${escapeHtml(x.studentId || '-')}) | <b>ชั้น/ห้อง:</b> ${escapeHtml(x.level || '-')} / ${escapeHtml(x.className || '-')} | <b>SubmissionID:</b> ${escapeHtml(x.submissionId || '-')}</div><div><b>ปัญหา:</b> ${escapeHtml(x.detail)}</div>${(x.choices || []).length ? `<label>เลือกวิธีแก้<select class="sync-resolution" data-key="${escapeHtml(x.key || '')}"><option value="SKIP">ข้ามรายการนี้</option>${x.choices.map(choice => `<option value="${escapeHtml(choice.value)}">${escapeHtml(choice.label)}</option>`).join('')}</select></label>` : ''}</div>`).join('')}</div>` : ''}`;
 }
 
 function collectGroupSyncResolutions() {
