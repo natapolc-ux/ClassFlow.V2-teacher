@@ -24,7 +24,7 @@ const state = {
   submissionsInFlight: new Set()
 };
 const ALL_OPTION = '__ALL__';
-const MATRIX_V2_WEB_VERSION = '2026.10.01-file-history-fast-load';
+const MATRIX_V2_WEB_VERSION = '2026.10.01-drive-file-recovery';
 const MATRIX_V2_WEB_UPDATED_AT = '2026-10-01 02:30:00 +07';
 
 const PAGE_TITLES = {
@@ -1769,14 +1769,17 @@ function collectGroupSyncResolutions() {
   return Array.from(document.querySelectorAll('.sync-resolution')).map(select => ({ key: select.dataset.key, value: select.value })).filter(item => item.key && item.value && item.value !== 'SKIP');
 }
 
-function renderRemovedFileHistory(items) {
+function renderRemovedFileHistory(items, recoverySource='logs') {
   const box = $('removedFileHistory');
   if (!box) return;
   if (!items.length) {
-    box.innerHTML = 'ยังไม่มีประวัติการนำไฟล์ออกจากงานส่ง';
+    box.innerHTML = 'ไม่พบประวัติใน Logs และไม่พบไฟล์ที่หลุดการเชื่อมโยงในโฟลเดอร์ Drive ของรายการส่งงาน';
     return;
   }
-  box.innerHTML = `<div class="removed-file-list">${items.map(item => `<div class="removed-file-row">
+  const sourceNote = recoverySource === 'drive'
+    ? '<div class="issue"><b>ไม่พบ Log เดิม</b> รายการด้านล่างตรวจพบจากไฟล์ใน Google Drive ที่ไม่ได้เชื่อมกับงานปัจจุบัน กรุณาตรวจชื่อไฟล์ก่อนกู้คืน</div>'
+    : '';
+  box.innerHTML = `${sourceNote}<div class="removed-file-list">${items.map(item => `<div class="removed-file-row">
     <div><b>${escapeHtml(item.fileName || 'ไม่พบชื่อไฟล์ในประวัติเดิม')}</b> <span class="status-pill">${escapeHtml(item.reason || '-')}</span></div>
     <div><b>งาน:</b> ${escapeHtml(item.assignmentTopic || item.assignmentId || '-')} | <b>AssignmentID:</b> ${escapeHtml(item.assignmentId || '-')}</div>
     <div><b>ผู้ส่ง:</b> ${escapeHtml(item.studentName || '-')} (${escapeHtml(item.studentId || '-')}) | <b>SubmissionID:</b> ${escapeHtml(item.submissionId || '-')} | <b>แถว:</b> ${escapeHtml(item.sourceRow || '-')}</div>
@@ -1790,7 +1793,7 @@ async function loadRemovedFileHistory() {
   if (box) box.textContent = 'กำลังโหลดประวัติไฟล์ที่นำออก...';
   try {
     const data = await apiGet({ action: 'removedSubmissionFiles' });
-    renderRemovedFileHistory(data.removedFiles || []);
+    renderRemovedFileHistory(data.removedFiles || [], data.recoverySource || 'logs');
   } catch (err) {
     const message = err.message || 'โหลดประวัติไม่สำเร็จ';
     const deploymentHint = /ไม่พบ action|Apps Script deployment/i.test(message)
