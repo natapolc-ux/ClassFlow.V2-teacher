@@ -24,7 +24,7 @@ const state = {
   submissionsInFlight: new Set()
 };
 const ALL_OPTION = '__ALL__';
-const MATRIX_V2_WEB_VERSION = '2026.09.29-identifiable-sync-issues';
+const MATRIX_V2_WEB_VERSION = '2026.09.30-file-restore-history';
 const MATRIX_V2_WEB_UPDATED_AT = '2026-09-29 11:20:00 +07';
 
 const PAGE_TITLES = {
@@ -1538,6 +1538,12 @@ function renderSettingsPage() {
           <div id="groupSyncResult" class="student-preview-note">ยังไม่ได้ตรวจสอบประเภทงานและข้อมูลกลุ่ม</div>
         </div>
       </div>
+      <div class="system-card system-card-wide">
+        <h3>ประวัติไฟล์ที่นำออกและการกู้คืน</h3>
+        <p>แสดงไฟล์ที่เคยกด “ลบไฟล์นี้” ไฟล์จริงยังอยู่ใน Google Drive และสามารถกู้กลับเข้ารายการส่งงานเดิมได้</p>
+        <div class="detail-actions"><button onclick="loadRemovedFileHistory()">โหลด/รีเฟรชประวัติ</button></div>
+        <div id="removedFileHistory" class="student-preview-note">กดโหลดประวัติเพื่อตรวจสอบไฟล์ที่นำออก</div>
+      </div>
       <div class="system-card">
         <h3>ข้อมูลการอัปเดตระบบ</h3>
         <div class="update-meta">
@@ -1761,6 +1767,43 @@ function renderGroupSyncResult(data) {
 
 function collectGroupSyncResolutions() {
   return Array.from(document.querySelectorAll('.sync-resolution')).map(select => ({ key: select.dataset.key, value: select.value })).filter(item => item.key && item.value && item.value !== 'SKIP');
+}
+
+function renderRemovedFileHistory(items) {
+  const box = $('removedFileHistory');
+  if (!box) return;
+  if (!items.length) {
+    box.innerHTML = 'ยังไม่มีประวัติการนำไฟล์ออกจากงานส่ง';
+    return;
+  }
+  box.innerHTML = `<div class="removed-file-list">${items.map(item => `<div class="removed-file-row">
+    <div><b>${escapeHtml(item.fileName || 'ไม่พบชื่อไฟล์ในประวัติเดิม')}</b> <span class="status-pill">${escapeHtml(item.reason || '-')}</span></div>
+    <div><b>งาน:</b> ${escapeHtml(item.assignmentTopic || item.assignmentId || '-')} | <b>AssignmentID:</b> ${escapeHtml(item.assignmentId || '-')}</div>
+    <div><b>ผู้ส่ง:</b> ${escapeHtml(item.studentName || '-')} (${escapeHtml(item.studentId || '-')}) | <b>SubmissionID:</b> ${escapeHtml(item.submissionId || '-')} | <b>แถว:</b> ${escapeHtml(item.sourceRow || '-')}</div>
+    <div><b>นำออกเมื่อ:</b> ${escapeHtml(item.timestamp || '-')} | <b>ผู้ดำเนินการ:</b> ${escapeHtml(item.removedBy || '-')}</div>
+    <div class="detail-actions"><a class="btn" href="${escapeHtml(item.fileUrl || '#')}" target="_blank" rel="noopener">เปิดไฟล์ใน Drive</a>${item.canRestore ? `<button onclick="restoreRemovedSubmissionFile('${escapeHtml(item.logId)}')">กู้คืนไฟล์</button>` : ''}</div>
+  </div>`).join('')}</div>`;
+}
+
+async function loadRemovedFileHistory() {
+  const box = $('removedFileHistory');
+  if (box) box.textContent = 'กำลังโหลดประวัติไฟล์ที่นำออก...';
+  try {
+    const data = await apiGet({ action: 'removedSubmissionFiles' });
+    renderRemovedFileHistory(data.removedFiles || []);
+  } catch (err) {
+    if (box) box.textContent = err.message;
+    showToast(err.message);
+  }
+}
+
+async function restoreRemovedSubmissionFile(logId) {
+  if (!confirm('ยืนยันกู้คืนไฟล์นี้กลับเข้ารายการส่งงานเดิมหรือไม่')) return;
+  try {
+    const data = await apiPost({ action: 'restoreSubmissionFile', logId, userId: state.user.UserID });
+    showToast(data.alreadyRestored ? 'ไฟล์นี้อยู่ในรายการส่งงานแล้ว' : 'กู้คืนไฟล์เรียบร้อยแล้ว');
+    await loadRemovedFileHistory();
+  } catch (err) { showToast(err.message); }
 }
 
 async function previewGroupSync() {
