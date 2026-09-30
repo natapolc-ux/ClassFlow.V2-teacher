@@ -160,12 +160,16 @@
     .issue { border-left: 4px solid var(--warning); padding: 8px 10px; margin: 6px 0; background: rgba(250,204,21,.1); }
     .issue.error { border-left-color: var(--danger); background: rgba(239,68,68,.15); }
     .group-warning { border: 2px solid #b45309; background: #fef3c7; color: #451a03; padding: 10px 12px; font-weight: 800; }
-    .individual-score-panel { border: 1px solid #334155; background: #f8fafc; padding: 10px; }
+    .individual-score-panel { width: 100%; max-width: 100%; min-width: 0; border: 1px solid #334155; background: #f8fafc; padding: 10px; overflow: hidden; }
     .individual-score-panel summary { cursor: pointer; font-weight: 900; margin-bottom: 10px; }
+    .individual-score-table { width: 100%; max-width: 100%; overflow-x: auto; padding-bottom: 6px; }
     .individual-score-head, .individual-score-row { display: grid; grid-template-columns: minmax(140px,1.5fr) repeat(3,minmax(90px,1fr)) minmax(130px,1.4fr); gap: 6px; align-items: center; margin-bottom: 6px; }
+    .individual-score-table .individual-score-head, .individual-score-table .individual-score-row { min-width: 680px; }
     .individual-score-head { font-size: 12px; font-weight: 900; color: #334155; }
-    .individual-score-row small { display: block; color: #64748b; }
+    .individual-score-row > div { min-width: 0; overflow-wrap: anywhere; word-break: break-word; }
+    .individual-score-row small { display: block; color: #64748b; overflow-wrap: anywhere; word-break: break-all; }
     .individual-score-row input, .individual-score-row select { min-width: 0; width: 100%; }
+    .individual-score-panel > button { max-width: 100%; margin-top: 6px; white-space: normal; }
     .student-participation-box { border: 1px solid var(--accent); padding: 10px; display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
     .student-participation-box label { flex: 1 1 220px; margin: 0; }
     .student-participation-box select { width: 100%; margin-top: 6px; }
