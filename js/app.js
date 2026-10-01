@@ -24,7 +24,7 @@ const state = {
   submissionsInFlight: new Set()
 };
 const ALL_OPTION = '__ALL__';
-const MATRIX_V2_WEB_VERSION = '2026.10.01-submissionid-log-recovery';
+const MATRIX_V2_WEB_VERSION = '2026.10.01-manual-score-without-submission';
 const MATRIX_V2_WEB_UPDATED_AT = '2026-10-01 02:30:00 +07';
 
 const PAGE_TITLES = {
@@ -1175,6 +1175,7 @@ function renderScoreTablePage() {
     <button onclick="exportScoreImage()">บันทึกตารางเป็นรูปภาพ</button>
     <div class="score-tools">
       <span id="scoreSelectedCount">เลือกแล้ว 0 ช่อง</span>
+      <span class="score-manual-hint">เลือกช่อง “ยังไม่ส่ง” เพื่อบันทึกคะแนนโดยครูได้</span>
       <button onclick="clearScoreCellSelection()">ยกเลิกการเลือก</button>
       <button onclick="batchScoreMarkChecked()">ตรวจแล้ว</button>
       <button onclick="batchScoreFullScore()">ให้คะแนนเต็ม</button>
@@ -1211,8 +1212,9 @@ function assignmentWorkNumber(a, index) {
 }
 function scoreCellDisplay(c) {
   const score = String(c?.score ?? '').trim();
-  if (score) return escapeHtml(score);
+  if (score) return `${escapeHtml(score)}${c?.manualScore ? '<small class="manual-score-label">ครูบันทึก</small>' : ''}`;
   const status = String(c?.checkedStatus || '').trim();
+  if (status === 'ครูบันทึกคะแนน') return '<span class="manual-score-label">ครูบันทึกคะแนน</span>';
   if (status === 'ตรวจแล้ว') return 'ตรวจแล้ว';
   if (status === 'ยังไม่ส่ง') return '<span class="score-empty">ยังไม่ส่ง</span>';
   return '';
@@ -1232,9 +1234,9 @@ function scoreTableHtml(data) {
     const name = firstNameOnly(u.Name);
     const cells = (r.cells || []).map(c => {
       const hasSubmission = !!c.submissionId;
-      return `<td class="score-cell ${hasSubmission ? '' : 'score-cell-disabled'}" data-assignment-id="${escapeHtml(c.assignmentId || '')}" data-submission-id="${escapeHtml(c.submissionId || '')}">
+      return `<td class="score-cell ${hasSubmission ? '' : 'score-cell-manual'}" data-assignment-id="${escapeHtml(c.assignmentId || '')}" data-submission-id="${escapeHtml(c.submissionId || '')}" data-student-id="${escapeHtml(c.studentId || u.UserID || '')}">
         <div class="score-cell-inner">
-          <label class="score-check-label"><input type="checkbox" class="score-cell-check" ${hasSubmission ? '' : 'disabled'} data-submission-id="${escapeHtml(c.submissionId || '')}" data-assignment-id="${escapeHtml(c.assignmentId || '')}" onchange="updateScoreSelectedCount()"></label>
+          <label class="score-check-label"><input type="checkbox" class="score-cell-check" data-submission-id="${escapeHtml(c.submissionId || '')}" data-student-id="${escapeHtml(c.studentId || u.UserID || '')}" data-assignment-id="${escapeHtml(c.assignmentId || '')}" onchange="updateScoreSelectedCount()"></label>
           <div class="score-value-box">${scoreCellDisplay(c)}</div>
         </div>
       </td>`;
@@ -1253,8 +1255,10 @@ function getSelectedScoreCells() {
   const map = new Map();
   document.querySelectorAll('.score-cell-check:checked').forEach(cb => {
     const submissionId = cb.dataset.submissionId || '';
-    if (!submissionId) return;
-    map.set(submissionId, { submissionId, assignmentId: cb.dataset.assignmentId || '' });
+    const studentId = cb.dataset.studentId || '';
+    const assignmentId = cb.dataset.assignmentId || '';
+    const key = submissionId ? `submission:${submissionId}` : `manual:${assignmentId}:${studentId}`;
+    map.set(key, { submissionId, studentId, assignmentId });
   });
   return Array.from(map.values());
 }
@@ -1311,15 +1315,15 @@ async function batchUpdateScoreCells(makePayload, successMessage) {
     buttons.forEach(button => button.disabled = true);
     showToast(`กำลังบันทึก ${selected.length} ช่อง...`);
     const updates = selected.map(item => makePayload(item));
-    const data = await apiPost({ action: 'batchUpdateSubmissions', userId: state.user.UserID, updates });
-    const succeeded = (data.results || []).filter(result => result.ok && result.submission);
+    const data = await apiPost({ action: 'saveScoreTableCells', userId: state.user.UserID, updates });
+    const succeeded = (data.results || []).filter(result => result.ok);
     const failed = (data.results || []).filter(result => !result.ok);
-    succeeded.forEach(result => applySavedSubmissionToScoreTable(result.submission));
+    (data.results || []).filter(result => result.ok && result.submission).forEach(result => applySavedSubmissionToScoreTable(result.submission));
     showToast(data.warning || (failed.length
       ? `บันทึกสำเร็จ ${succeeded.length} งาน, ไม่สำเร็จ ${failed.length} งาน${batchFailureDetail(failed)} — รายการที่ไม่สำเร็จยังถูกเลือกอยู่`
       : `${successMessage || 'บันทึกคะแนนแล้ว'} (${succeeded.length} งาน)`));
     document.querySelectorAll('.score-col-check').forEach(cb => cb.checked = false);
-    updateScoreSelectedCount();
+    await loadScoreTable();
     buttons.forEach(button => button.disabled = false);
   } catch (err) {
     showToast('บันทึกไม่สำเร็จ: ' + err.message);
@@ -1327,20 +1331,21 @@ async function batchUpdateScoreCells(makePayload, successMessage) {
   }
 }
 function batchScoreMarkChecked() {
-  batchUpdateScoreCells(item => ({ action: 'updateSubmission', submissionId: item.submissionId, userId: state.user.UserID, CheckedStatus: 'ตรวจแล้ว' }), 'เปลี่ยนสถานะเป็นตรวจแล้ว');
+  batchUpdateScoreCells(item => ({ action: 'updateSubmission', submissionId: item.submissionId, studentId: item.studentId, assignmentId: item.assignmentId, userId: state.user.UserID, CheckedStatus: 'ตรวจแล้ว' }), 'เปลี่ยนสถานะเป็นตรวจแล้ว');
 }
 function batchScoreFullScore() {
   batchUpdateScoreCells(item => {
     const a = getScoreAssignment(item.assignmentId);
-    return { action: 'updateSubmission', submissionId: item.submissionId, assignmentId: item.assignmentId, userId: state.user.UserID, Score: a.FullScore ?? '', CheckedStatus: 'ตรวจแล้ว', requireScore: true };
+    return { action: 'updateSubmission', submissionId: item.submissionId, studentId: item.studentId, assignmentId: item.assignmentId, userId: state.user.UserID, Score: a.FullScore ?? '', CheckedStatus: 'ตรวจแล้ว', requireScore: true };
   }, 'ให้คะแนนเต็มกับช่องที่เลือกแล้ว');
 }
 function batchScoreCustomScore() {
   const score = $('scoreBulkValue')?.value ?? '';
   if (!String(score).trim()) return showToast('กรุณาใส่คะแนนก่อน');
-  batchUpdateScoreCells(item => ({ action: 'updateSubmission', submissionId: item.submissionId, userId: state.user.UserID, Score: score, CheckedStatus: 'ตรวจแล้ว' }), 'ให้คะแนนกับช่องที่เลือกแล้ว');
+  batchUpdateScoreCells(item => ({ action: 'updateSubmission', submissionId: item.submissionId, studentId: item.studentId, assignmentId: item.assignmentId, userId: state.user.UserID, Score: score, CheckedStatus: 'ตรวจแล้ว' }), 'ให้คะแนนกับช่องที่เลือกแล้ว');
 }
 function scoreImageCellText(cell) {
+  if (cell?.manualScore) return 'ครูบันทึกคะแนน';
   const score = String(cell?.score ?? '').trim();
   if (score) return 'ตรวจแล้ว';
   const status = String(cell?.checkedStatus || '').trim();
